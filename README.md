@@ -1,8 +1,10 @@
 # ir-szte
 
 
-PID: pip install simple_pid==0.1.4
-Jupyter notebook: pip install jupyter
+PID: pip install simple_pid==0.1.4 
+
+Jupyter notebook: pip install jupyter 
+
 command: jupyter notebook 
 
 
