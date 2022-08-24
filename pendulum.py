@@ -120,21 +120,17 @@ class PendulumEnv(gym.Env):
 
     def step(self, u):
         th, thdot = self.state  # th := theta
-
         g = self.g
         m = self.m
         l = self.l
         dt = self.dt
-        drag = 0.0174532925
+        drag = -0.1
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
+        u += drag*thdot
         self.last_u = u  # for rendering
         costs = angle_normalize(th) ** 2 + 0.1 * thdot**2 + 0.001 * (u**2)
 
         newthdot = thdot + (3 * g / (2 * l) * np.sin(th) + 3.0 / (m * l**2) * u) * dt
-        #if newthdot >= 0:
-        #    newthdot -= drag
-        #else:
-        #    newthdot += drag
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
         newth = th + newthdot * dt
 
@@ -159,9 +155,15 @@ class PendulumEnv(gym.Env):
             y = options.get("y_init") if "y_init" in options else DEFAULT_Y
             x = utils.verify_number_and_cast(x)
             y = utils.verify_number_and_cast(y)
+            
+            x_start = options.get("x") if "x" in options else None
+            y_start = options.get("y") if "y" in options else None
             high = np.array([x, y])
         low = -high  # We enforce symmetric limits.
-        self.state = self.np_random.uniform(low=low, high=high)
+        if x_start is not None and y_start is not None:
+            self.state = np.array([x_start, y_start], dtype=np.float64)
+        else:
+            self.state = self.np_random.uniform(low=low, high=high)
         self.last_u = None
 
         self.renderer.reset()
