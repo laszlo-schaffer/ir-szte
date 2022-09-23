@@ -9,7 +9,7 @@ import gym
 from gym import spaces
 from gym.envs.classic_control import utils
 from gym.error import DependencyNotInstalled
-from gym.utils.renderer import Renderer
+# from gym.utils.renderer import Renderer # is missing!
 
 DEFAULT_X = np.pi
 DEFAULT_Y = 1.0
@@ -50,7 +50,7 @@ class PendulumEnv(gym.Env):
     | Num | Observation      | Min  | Max |
     |-----|------------------|------|-----|
     | 0   | x = cos(theta)   | -1.0 | 1.0 |
-    | 1   | y = sin(angle)   | -1.0 | 1.0 |
+    | 1   | y = sin(theta)   | -1.0 | 1.0 |
     | 2   | Angular Velocity | -8.0 | 8.0 |
 
     ### Rewards
@@ -89,20 +89,20 @@ class PendulumEnv(gym.Env):
     """
 
     metadata = {
-        "render_modes": ["human", "rgb_array", "single_rgb_array"],
+        "render_modes": ["human", "rgb_array"],
         "render_fps": 30,
     }
 
     def __init__(self, render_mode: Optional[str] = None, g=10.0):
         self.max_speed = 8
-        self.max_torque = 8.0
+        self.max_torque = 8.0 # mod
         self.dt = 0.05
         self.g = g
         self.m = 1.0
         self.l = 1.0
 
         self.render_mode = render_mode
-        self.renderer = Renderer(self.render_mode, self._render)
+        # self.renderer = Renderer(self.render_mode, self._render)  # is missing!
 
         self.screen_dim = 500
         self.screen = None
@@ -124,9 +124,9 @@ class PendulumEnv(gym.Env):
         m = self.m
         l = self.l
         dt = self.dt
-        drag = -0.1
+        drag = -0.1 # mod
         u = np.clip(u, -self.max_torque, self.max_torque)[0]
-        u += drag*thdot
+        u += drag*thdot # mod
         self.last_u = u  # for rendering
         costs = angle_normalize(th) ** 2 + 0.1 * thdot**2 + 0.001 * (u**2)
 
@@ -135,16 +135,12 @@ class PendulumEnv(gym.Env):
         newth = th + newthdot * dt
 
         self.state = np.array([newth, newthdot])
-        self.renderer.render_step()
+        # self.renderer.render_step()  # is missing
+        if self.render_mode == "human":
+            self.render()
         return self._get_obs(), -costs, False, False, {}
 
-    def reset(
-        self,
-        *,
-        seed: Optional[int] = None,
-        return_info: bool = False,
-        options: Optional[dict] = None
-    ):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
         if options is None:
             high = np.array([DEFAULT_X, DEFAULT_Y])
@@ -155,7 +151,6 @@ class PendulumEnv(gym.Env):
             y = options.get("y_init") if "y_init" in options else DEFAULT_Y
             x = utils.verify_number_and_cast(x)
             y = utils.verify_number_and_cast(y)
-            
             x_start = options.get("x") if "x" in options else None
             y_start = options.get("y") if "y" in options else None
             high = np.array([x, y])
@@ -166,25 +161,17 @@ class PendulumEnv(gym.Env):
             self.state = self.np_random.uniform(low=low, high=high)
         self.last_u = None
 
-        self.renderer.reset()
-        self.renderer.render_step()
-        if not return_info:
-            return self._get_obs()
-        else:
-            return self._get_obs(), {}
+        # self.renderer.reset()  # is missing!
+        # self.renderer.render_step()  # is missing!
+        if self.render_mode == "human":
+            self.render()
+        return self._get_obs(), {}
 
     def _get_obs(self):
         theta, thetadot = self.state
         return np.array([np.cos(theta), np.sin(theta), thetadot], dtype=np.float32)
 
-    def render(self, mode="human"):
-        if self.render_mode is not None:
-            return self.renderer.get_renders()
-        else:
-            return self._render(mode)
-
-    def _render(self, mode="human"):
-        assert mode in self.metadata["render_modes"]
+    def render(self):
         try:
             import pygame
             from pygame import gfxdraw
@@ -195,12 +182,12 @@ class PendulumEnv(gym.Env):
 
         if self.screen is None:
             pygame.init()
-            if mode == "human":
+            if self.render_mode == "human":
                 pygame.display.init()
                 self.screen = pygame.display.set_mode(
                     (self.screen_dim, self.screen_dim)
                 )
-            else:  # mode in {"rgb_array", "single_rgb_array"}
+            else:  # mode in "rgb_array"
                 self.screen = pygame.Surface((self.screen_dim, self.screen_dim))
         if self.clock is None:
             self.clock = pygame.time.Clock()
@@ -262,7 +249,7 @@ class PendulumEnv(gym.Env):
 
         self.surf = pygame.transform.flip(self.surf, False, True)
         self.screen.blit(self.surf, (0, 0))
-        if mode == "human":
+        if self.render_mode == "human":
             pygame.event.pump()
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
